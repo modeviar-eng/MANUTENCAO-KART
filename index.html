@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KartManager Pro - Sistema Integrado</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #121214;
+            --bg-card: #202024;
+            --bg-input: #121214;
+            --primary: #8257e6;
+            --primary-hover: #9466ff;
+            --accent: #04d361;
+            --danger: #e94560;
+            --text-main: #e1e1e6;
+            --text-sec: #a8a8b3;
+            --border: #323238;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        
+        body { background-color: var(--bg-dark); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .sidebar { width: 260px; background-color: var(--bg-card); padding: 20px; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+        .logo { font-size: 1.4rem; font-weight: bold; margin-bottom: 30px; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        
+        .nav-links { display: flex; flex-direction: column; gap: 5px; flex: 1; overflow-y: auto; }
+        .menu-item { padding: 12px 15px; cursor: pointer; color: var(--text-sec); border-radius: 6px; transition: 0.2s; display: flex; align-items: center; gap: 12px; font-size: 0.9rem; }
+        .menu-item:hover, .menu-item.active { background-color: var(--primary); color: white; }
+        .menu-section-label { font-size: 0.75rem; text-transform: uppercase; color: #555; margin: 15px 0 5px 10px; font-weight: bold; letter-spacing: 1px; }
+
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; position: relative; }
+        
+        .view-section { display: none; animation: fadeIn 0.3s ease; }
+        .view-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .header-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
+        .header-section h2 { font-size: 1.5rem; }
+
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .full-width { grid-column: 1 / -1; }
+        
+        .card { background-color: var(--bg-card); padding: 25px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 20px; }
+        .card h3 { margin-bottom: 15px; font-size: 1.1rem; color: var(--primary); }
+        
+        label { display: block; margin-bottom: 8px; color: var(--text-sec); font-size: 0.85rem; }
+        input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); color: white; border-radius: 6px; outline: none; transition: 0.2s; }
+        
+        .btn { padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-success { background-color: var(--accent); color: #000; }
+        .btn-danger { background-color: var(--danger); color: white; padding: 8px; }
+        .btn-edit { background-color: var(--primary); color: white; padding: 8px; }
+        .btn-filter { background-color: var(--bg-input); border: 1px solid var(--border); color: var(--text-main); }
+        
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        .data-table th, .data-table td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border); }
+        .data-table th { color: var(--text-sec); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
+        
+        .status-tag { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+        .tag-active { background: rgba(4, 211, 97, 0.15); color: var(--accent); }
+        .tag-inactive { background: rgba(233, 69, 96, 0.15); color: var(--danger); }
+        
+        .analytics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .kpi-value { font-size: 1.8rem; font-weight: bold; color: var(--text-main); margin-top: 5px; }
+        .kpi-sub { font-size: 0.8rem; color: var(--text-sec); }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar">
+        <div class="logo"><i class="fas fa-flag-checkered"></i> KartControl</div>
+        <div class="nav-links">
+            <div class="menu-item active" onclick="showView('dashboard')"><i class="fas fa-chart-pie"></i> Dashboard</div>
+            <div class="menu-item" onclick="showView('analytics')"><i class="fas fa-chart-line"></i> Analytics & Custos</div>
+            <div class="menu-item" onclick="showView('batch-control')"><i class="fas fa-history"></i> Controle de Lotes</div>
+            <div class="menu-section-label">Cadastros</div>
+            <div class="menu-item" onclick="showView('karts')"><i class="fas fa-car"></i> Karts</div>
+            <div class="menu-item" onclick="showView('suppliers')"><i class="fas fa-truck"></i> Fornecedores</div>
+            <div class="menu-item" onclick="showView('team')"><i class="fas fa-users"></i> Equipe</div>
+            <div class="menu-section-label">Oficina & Estoque</div>
+            <div class="menu-item" onclick="showView('register-parts')"><i class="fas fa-plus-circle"></i> Cadastrar Peças</div>
+            <div class="menu-item" onclick="showView('inventory-in')"><i class="fas fa-box-open"></i> Entrada de Peças</div>
+            <div class="menu-item" onclick="showView('maintenance')"><i class="fas fa-tools"></i> Troca / Manutenção</div>
+            <div class="menu-item" onclick="showView('stock-view')"><i class="fas fa-clipboard-list"></i> Estoque Atual</div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+
+        <section id="dashboard" class="view-section active">
+            <div class="header-section"><h2>Visão Geral</h2></div>
+            <div class="form-grid">
+                <div class="card" style="border-top: 3px solid var(--accent);"><h3>Karts Ativos</h3><p id="dash-karts-count" style="font-size: 2rem;">0</p></div>
+                <div class="card" style="border-top: 3px solid var(--danger);"><h3>Alertas Estoque</h3><p id="dash-stock-alerts" style="font-size: 2rem;">0</p></div>
+                <div class="card" style="border-top: 3px solid var(--primary);"><h3>Manutenções</h3><p id="dash-maint-count" style="font-size: 2rem;">0</p></div>
+            </div>
+        </section>
+
+        <section id="analytics" class="view-section">
+            <div class="header-section">
+                <h2>Analytics & Custos</h2>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <select id="ana-kart-filter" class="btn-filter" style="width: 130px;"><option value="all">Todos Karts</option></select>
+                    <input type="date" id="ana-start" class="btn-filter" style="width: 140px;">
+                    <input type="date" id="ana-end" class="btn-filter" style="width: 140px;">
+                    <button class="btn btn-primary" id="btn-run-analytics"><i class="fas fa-filter"></i> Filtrar</button>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="card"><h3>Gasto Total no Período</h3><div class="kpi-value" id="ana-total-spent">R$ 0,00</div></div>
+                <div class="card"><h3>Peça de Maior Custo</h3><div class="kpi-value" id="ana-top-part">-</div><div class="kpi-sub" id="ana-top-part-val">R$ 0,00</div></div>
+            </div>
+            <div class="analytics-grid">
+                <div class="card"><h3>Gasto por Kart</h3><table class="data-table"><thead><tr><th>Kart</th><th>Qtd</th><th>Total (R$)</th></tr></thead><tbody id="ana-kart-table"></tbody></table></div>
+                <div class="card"><h3>Gasto por Posição</h3><table class="data-table"><thead><tr><th>Peça</th><th>Posição</th><th>Qtd</th><th>Total</th></tr></thead><tbody id="ana-pos-table"></tbody></table></div>
+            </div>
+        </section>
+
+        <section id="batch-control" class="view-section">
+            <div class="header-section">
+                <h2>Controle de Vida Útil por Lote</h2>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <select id="batch-part-filter" class="btn-filter" style="width: 180px;"><option value="all">Todas Peças</option></select>
+                    <input type="text" id="batch-lote-filter" class="btn-filter" placeholder="Lote específico..." style="width: 150px;">
+                    <button class="btn btn-primary" id="btn-run-batch-ana"><i class="fas fa-search"></i> Analisar</button>
+                </div>
+            </div>
+            <div class="card">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Peça</th>
+                            <th>Lote</th>
+                            <th>Total Usado</th>
+                            <th>Primeira Troca</th>
+                            <th>Última Troca</th>
+                            <th>Vida Útil Média</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batch-analysis-table"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="karts" class="view-section">
+            <div class="header-section"><h2>Cadastro de Karts</h2></div>
+            <div class="card">
+                <input type="hidden" id="kart-id">
+                <div class="form-grid">
+                    <div><label>Número do Kart</label><input type="text" id="kart-num"></div>
+                    <div><label>Chassi</label><input type="text" id="kart-chassi"></div>
+                    <div><label>Motor</label><input type="text" id="kart-motor"></div>
+                    <div><label>Ano</label><input type="number" id="kart-year"></div>
+                    <div><label>Fornecedor</label><select id="kart-supplier-select"></select></div>
+                </div>
+                <button class="btn btn-success" id="btn-save-kart">Salvar Kart</button>
+            </div>
+            <div class="card">
+                <table class="data-table"><thead><tr><th>Nº</th><th>Chassi</th><th>Motor</th><th>Fornecedor</th><th>Ações</th></tr></thead><tbody id="karts-table-body"></tbody></table>
+            </div>
+        </section>
+
+        <section id="suppliers" class="view-section">
+            <div class="header-section"><h2>Fornecedores</h2></div>
+            <div class="card">
+                <div class="form-grid">
+                    <div class="full-width"><label>Nome</label><input type="text" id="sup-name"></div>
+                    <div><label>Local</label><input type="text" id="sup-loc"></div>
+                    <div><label>Telefone</label><input type="text" id="sup-tel"></div>
+                </div>
+                <button class="btn btn-success" id="btn-save-sup">Salvar</button>
+            </div>
+            <div class="card">
+                <table class="data-table"><thead><tr><th>Nome</th><th>Local</th><th>Contato</th><th>Ação</th></tr></thead><tbody id="supplier-table-body"></tbody></table>
+            </div>
+        </section>
+
+        <section id="team" class="view-section">
+            <div class="header-section"><h2>Gestão de Equipe</h2></div>
+            <div class="card">
+                <div class="form-grid">
+                    <div class="full-width"><label>Nome</label><input type="text" id="team-name"></div>
+                    <div><label>Cargo</label><select id="team-role"><option>Mecânico</option><option>Supervisor</option></select></div>
+                    <div><label>Status</label><select id="team-status"><option>Ativo</option><option>Inativo</option></select></div>
+                </div>
+                <button class="btn btn-success" id="btn-save-team">Salvar</button>
+            </div>
+            <div class="card">
+                <table class="data-table"><thead><tr><th>Nome</th><th>Cargo</th><th>Status</th><th>Ações</th></tr></thead><tbody id="team-table-body"></tbody></table>
+            </div>
+        </section>
+
+        <section id="register-parts" class="view-section">
+            <div class="header-section"><h2>Cadastro de Itens (Catálogo)</h2></div>
+            <div class="card">
+                <div class="form-grid">
+                    <div class="full-width"><label>Nome da Peça</label><input type="text" id="part-reg-name"></div>
+                    <div><label>Nível Mínimo para Alerta</label><input type="number" id="part-reg-min"></div>
+                    <div><label>Categoria</label><input type="text" id="part-reg-cat"></div>
+                </div>
+                <button class="btn btn-success" id="btn-save-part-reg">Cadastrar Item</button>
+            </div>
+            <div class="card">
+                <table class="data-table"><thead><tr><th>Nome</th><th>Mínimo</th><th>Categoria</th><th>Ações</th></tr></thead><tbody id="parts-reg-table-body"></tbody></table>
+            </div>
+        </section>
+
+        <section id="inventory-in" class="view-section">
+            <div class="header-section"><h2>Entrada de Estoque (Lotes)</h2></div>
+            <div class="card">
+                <div class="form-grid">
+                    <div class="full-width"><label>Peça (Catálogo)</label><select id="part-in-select"></select></div>
+                    <div><label>Lote</label><input type="text" id="part-in-batch"></div>
+                    <div><label>Fornecedor</label><select id="part-in-supplier"></select></div>
+                    <div><label>Quantidade</label><input type="number" id="part-in-qty"></div>
+                    <div><label>Custo Unitário (R$)</label><input type="number" step="0.01" id="part-in-cost"></div>
+                </div>
+                <button class="btn btn-success" id="btn-save-stock-in">Registrar Entrada</button>
+            </div>
+        </section>
+
+        <section id="maintenance" class="view-section">
+            <div class="header-section"><h2>Registrar Manutenção</h2></div>
+            <div class="card">
+                <div class="form-grid">
+                    <div><label>Kart</label><select id="maint-kart"></select></div>
+                    <div><label>Mecânico</label><select id="maint-mechanic"></select></div>
+                    <div class="full-width"><label>Lote da Peça Utilizado</label><select id="maint-stock-select"></select></div>
+                    <div class="full-width">
+                        <label>Posição</label>
+                        <input type="text" id="maint-pos" list="pos-options">
+                        <datalist id="pos-options">
+                            <option value="Pneu Dianteiro Esquerdo"><option value="Pneu Dianteiro Direito"><option value="Pneu Traseiro Esquerdo"><option value="Pneu Traseiro Direito"><option value="Motor - Geral"><option value="Vela de Ignição"><option value="Carburador"><option value="Coroa"><option value="Pinhão"><option value="Corrente"><option value="Eixo Traseiro"><option value="Freio - Pastilha"><option value="Freio - Disco"><option value="Barra de Direção"><option value="Volante"><option value="Banco"><option value="Parachoque Dianteiro"><option value="Parachoque Traseiro"><option value="Carenagem Lateral"><option value="Tanque de Combustível">
+                        </datalist>
+                    </div>
+                    <div><label>Quantidade</label><input type="number" id="maint-qty" value="1"></div>
+                </div>
+                <button class="btn btn-primary" id="btn-save-maint">Finalizar Manutenção</button>
+            </div>
+        </section>
+
+        <section id="stock-view" class="view-section">
+            <div class="header-section"><h2>Estoque Atual</h2></div>
+            <div class="card"><table class="data-table"><thead><tr><th>Peça</th><th>Lote</th><th>Qtd</th><th>Custo Unit.</th><th>Ações</th></tr></thead><tbody id="stock-table-body"></tbody></table></div>
+        </section>
+
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, getDoc, query, orderBy, increment, where, getDocs } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBq_Mv6kH1hde-I8EKKFxA1wAZUonaZNXo",
+            authDomain: "kart-eaf18.firebaseapp.com",
+            projectId: "kart-eaf18",
+            storageBucket: "kart-eaf18.firebasestorage.app",
+            messagingSenderId: "949664395432",
+            appId: "1:949664395432:web:9fadd682ee0dc84e4b929d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const ADMIN_PASS = "112512";
+
+        window.showView = (id) => {
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if(event) event.currentTarget.classList.add('active');
+        };
+
+        // --- KARTS & FILTROS ---
+        onSnapshot(collection(db, "karts"), snap => {
+            const tbody = document.getElementById('karts-table-body');
+            const mKart = document.getElementById('maint-kart');
+            const anaKart = document.getElementById('ana-kart-filter');
+            tbody.innerHTML = ''; mKart.innerHTML = ''; anaKart.innerHTML = '<option value="all">Todos Karts</option>';
+            document.getElementById('dash-karts-count').innerText = snap.size;
+            snap.forEach(d => {
+                const k = d.data();
+                tbody.innerHTML += `<tr><td>${k.num}</td><td>${k.chassi}</td><td>${k.motor}</td><td>${k.supplier || '-'}</td><td><button class="btn btn-danger" onclick="deleteData('karts','${d.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
+                mKart.innerHTML += `<option value="${k.num}">Kart #${k.num}</option>`;
+                anaKart.innerHTML += `<option value="${k.num}">Kart #${k.num}</option>`;
+            });
+        });
+
+        // --- FORNECEDORES ---
+        onSnapshot(collection(db, "suppliers"), snap => {
+            const tbody = document.getElementById('supplier-table-body');
+            const kSup = document.getElementById('kart-supplier-select');
+            const pSup = document.getElementById('part-in-supplier');
+            tbody.innerHTML = ''; kSup.innerHTML = '<option value="">Selecione...</option>'; pSup.innerHTML = '<option value="">Selecione...</option>';
+            snap.forEach(d => {
+                const s = d.data();
+                tbody.innerHTML += `<tr><td>${s.name}</td><td>${s.loc}</td><td>${s.tel || '-'}</td><td><button class="btn btn-danger" onclick="deleteData('suppliers','${d.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
+                kSup.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+                pSup.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+            });
+        });
+
+        // --- CATALOGO & FILTROS DE PEÇA ---
+        onSnapshot(collection(db, "parts_catalog"), (snap) => {
+            const tbody = document.getElementById('parts-reg-table-body');
+            const selectIn = document.getElementById('part-in-select');
+            const batchPartFilter = document.getElementById('batch-part-filter');
+            tbody.innerHTML = ''; selectIn.innerHTML = '<option>Selecione...</option>';
+            batchPartFilter.innerHTML = '<option value="all">Todas Peças</option>';
+            snap.forEach(d => {
+                const p = d.data();
+                tbody.innerHTML += `<tr><td>${p.name}</td><td>${p.min}</td><td>${p.cat}</td><td><button class="btn btn-danger" onclick="deleteData('parts_catalog','${d.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
+                selectIn.innerHTML += `<option value="${p.name}">${p.name}</option>`;
+                batchPartFilter.innerHTML += `<option value="${p.name}">${p.name}</option>`;
+            });
+        });
+
+        // --- ESTOQUE ---
+        onSnapshot(collection(db, "inventory"), snap => {
+            const tbody = document.getElementById('stock-table-body');
+            const mStock = document.getElementById('maint-stock-select');
+            tbody.innerHTML = ''; mStock.innerHTML = '';
+            snap.forEach(d => {
+                const i = d.data();
+                if(i.qty > 0) mStock.innerHTML += `<option value="${d.id}">${i.name} (Lote: ${i.batch} | R$${(i.cost||0).toFixed(2)})</option>`;
+                tbody.innerHTML += `<tr><td>${i.name}</td><td>${i.batch}</td><td>${i.qty}</td><td>R$ ${(i.cost || 0).toFixed(2)}</td><td><button class="btn btn-edit" onclick="editStockQty('${d.id}', ${i.qty})"><i class="fas fa-pen"></i></button><button class="btn btn-danger" onclick="deleteStockItem('${d.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
+            });
+        });
+
+        // --- MANUTENÇÃO ---
+        onSnapshot(collection(db, "team"), snap => {
+            const mMech = document.getElementById('maint-mechanic');
+            const tbody = document.getElementById('team-table-body');
+            mMech.innerHTML = ''; tbody.innerHTML = '';
+            snap.forEach(d => {
+                const t = d.data();
+                tbody.innerHTML += `<tr><td>${t.name}</td><td>${t.role}</td><td>${t.status}</td><td><button class="btn btn-danger" onclick="deleteData('team','${d.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
+                if(t.role === 'Mecânico') mMech.innerHTML += `<option value="${t.name}">${t.name}</option>`;
+            });
+        });
+
+        // --- ANALYTICS CORRIGIDO ---
+        document.getElementById('btn-run-analytics').onclick = async () => {
+            const startStr = document.getElementById('ana-start').value;
+            const endStr = document.getElementById('ana-end').value;
+            const kartFilter = document.getElementById('ana-kart-filter').value;
+            if(!startStr || !endStr) return alert("Selecione as datas!");
+            const start = new Date(startStr); start.setHours(0,0,0);
+            const end = new Date(endStr); end.setHours(23,59,59);
+            const snap = await getDocs(query(collection(db, "maintenance")));
+            let total = 0, kSpent = {}, pPos = {};
+            snap.forEach(d => {
+                const m = d.data();
+                const mDate = new Date(m.date);
+                if(mDate >= start && mDate <= end && (kartFilter === "all" || m.kart === kartFilter)) {
+                    const cost = (m.qty * (m.partCost || 0));
+                    total += cost;
+                    kSpent[m.kart] = kSpent[m.kart] || { q: 0, c: 0 };
+                    kSpent[m.kart].q += m.qty; kSpent[m.kart].c += cost;
+                    const pk = `${m.partName}-${m.position}`;
+                    pPos[pk] = pPos[pk] || { n: m.partName, p: m.position, q: 0, c: 0 };
+                    pPos[pk].q += m.qty; pPos[pk].c += cost;
+                }
+            });
+            document.getElementById('ana-total-spent').innerText = `R$ ${total.toFixed(2)}`;
+            const kt = document.getElementById('ana-kart-table'); kt.innerHTML = '';
+            Object.keys(kSpent).forEach(k => { kt.innerHTML += `<tr><td>Kart ${k}</td><td>${kSpent[k].q}</td><td>R$ ${kSpent[k].c.toFixed(2)}</td></tr>`; });
+            const pt = document.getElementById('ana-pos-table'); pt.innerHTML = '';
+            Object.values(pPos).sort((a,b) => b.c-a.c).forEach(p => { pt.innerHTML += `<tr><td>${p.n}</td><td>${p.p}</td><td>${p.q}</td><td>R$ ${p.c.toFixed(2)}</td></tr>`; });
+        };
+
+        // --- NOVA LÓGICA: CONTROLE DE LOTES ---
+        document.getElementById('btn-run-batch-ana').onclick = async () => {
+            const partFilter = document.getElementById('batch-part-filter').value;
+            const loteFilter = document.getElementById('batch-lote-filter').value.toLowerCase().trim();
+            const snap = await getDocs(query(collection(db, "maintenance")));
+            
+            let batchData = {};
+
+            snap.forEach(d => {
+                const m = d.data();
+                const mDate = new Date(m.date);
+                const partMatch = (partFilter === "all" || m.partName === partFilter);
+                const loteMatch = (loteFilter === "" || m.partBatch.toLowerCase().includes(loteFilter));
+
+                if(partMatch && loteMatch) {
+                    const key = `${m.partName}-${m.partBatch}`;
+                    if(!batchData[key]) batchData[key] = { n: m.partName, b: m.partBatch, dates: [], q: 0 };
+                    batchData[key].dates.push(mDate);
+                    batchData[key].q += m.qty;
+                }
+            });
+
+            const tbody = document.getElementById('batch-analysis-table');
+            tbody.innerHTML = '';
+
+            Object.values(batchData).forEach(b => {
+                b.dates.sort((x, y) => x - y);
+                const d1 = b.dates[0];
+                const d2 = b.dates[b.dates.length - 1];
+                let vidaUtil = "Apenas 1 uso";
+
+                if (b.dates.length > 1) {
+                    const dias = Math.ceil(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24));
+                    const media = (dias / b.q).toFixed(1);
+                    vidaUtil = `~ ${media} dias/unid.`;
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${b.n}</td>
+                        <td>${b.b}</td>
+                        <td>${b.q}</td>
+                        <td>${d1.toLocaleDateString()}</td>
+                        <td>${d2.toLocaleDateString()}</td>
+                        <td><span class="status-tag tag-active">${vidaUtil}</span></td>
+                    </tr>`;
+            });
+        };
+
+        // Funções de salvamento (Padrão)
+        document.getElementById('btn-save-sup').onclick = async () => { await addDoc(collection(db, "suppliers"), { name: document.getElementById('sup-name').value, loc: document.getElementById('sup-loc').value, tel: document.getElementById('sup-tel').value }); };
+        document.getElementById('btn-save-team').onclick = async () => { await addDoc(collection(db, "team"), { name: document.getElementById('team-name').value, role: document.getElementById('team-role').value, status: document.getElementById('team-status').value }); };
+        document.getElementById('btn-save-part-reg').onclick = async () => { await addDoc(collection(db, "parts_catalog"), { name: document.getElementById('part-reg-name').value, min: parseInt(document.getElementById('part-reg-min').value), cat: document.getElementById('part-reg-cat').value }); };
+        document.getElementById('btn-save-stock-in').onclick = async () => { await addDoc(collection(db, "inventory"), { name: document.getElementById('part-in-select').value, batch: document.getElementById('part-in-batch').value, qty: parseInt(document.getElementById('part-in-qty').value), supplier: document.getElementById('part-in-supplier').value, cost: parseFloat(document.getElementById('part-in-cost').value) || 0, date: new Date().toISOString() }); alert("Registrado!"); };
+        document.getElementById('btn-save-maint').onclick = async () => {
+            const id = document.getElementById('maint-stock-select').value;
+            const q = parseInt(document.getElementById('maint-qty').value);
+            const s = await getDoc(doc(db, "inventory", id));
+            await addDoc(collection(db, "maintenance"), { kart: document.getElementById('maint-kart').value, mechanic: document.getElementById('maint-mechanic').value, qty: q, date: new Date().toISOString(), partName: s.data().name, partBatch: s.data().batch, partCost: s.data().cost || 0, position: document.getElementById('maint-pos').value });
+            await updateDoc(doc(db, "inventory", id), { qty: increment(-q) });
+            alert("Feito!");
+        };
+
+        window.editStockQty = async (id, cur) => { if (prompt("Senha:") === ADMIN_PASS) { const n = prompt("Nova Qtd:", cur); if(n) await updateDoc(doc(db, "inventory", id), { qty: parseInt(n) }); } };
+        window.deleteStockItem = async (id) => { if (prompt("Senha:") === ADMIN_PASS) await deleteDoc(doc(db, "inventory", id)); };
+        window.deleteData = async (c, id) => { if(confirm("Apagar?")) await deleteDoc(doc(db, c, id)); };
+
+    </script>
+</body>
+</html>
