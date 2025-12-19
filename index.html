@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kart Manager Pro - Sistema Integrado</title>
+    <title>KartManager Pro - Sistema Integrado</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     
@@ -206,7 +206,20 @@
                 <div class="form-grid">
                     <div class="full-width"><label>Nome da Peça</label><input type="text" id="part-reg-name"></div>
                     <div><label>Nível Mínimo para Alerta</label><input type="number" id="part-reg-min"></div>
-                    <div><label>Categoria</label><input type="text" id="part-reg-cat"></div>
+                    <div>
+                        <label>Categoria</label>
+                        <select id="part-reg-cat">
+                            <option value="Motor">Motor</option>
+                            <option value="Chassi">Chassi</option>
+                            <option value="Pneus">Pneus</option>
+                            <option value="Freios">Freios</option>
+                            <option value="Transmissão">Transmissão</option>
+                            <option value="Eletrônica">Eletrônica</option>
+                            <option value="Acessórios">Acessórios</option>
+                            <option value="Consumíveis">Consumíveis</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
                 </div>
                 <button class="btn btn-success" id="btn-save-part-reg">Cadastrar Item</button>
             </div>
@@ -224,6 +237,7 @@
                     <div><label>Fornecedor</label><select id="part-in-supplier"></select></div>
                     <div><label>Quantidade</label><input type="number" id="part-in-qty"></div>
                     <div><label>Custo Unitário (R$)</label><input type="number" step="0.01" id="part-in-cost"></div>
+                    <div><label>Data de Entrada</label><input type="date" id="part-in-date"></div>
                 </div>
                 <button class="btn btn-success" id="btn-save-stock-in">Registrar Entrada</button>
             </div>
@@ -240,8 +254,7 @@
                         <label>Posição</label>
                         <input type="text" id="maint-pos" list="pos-options">
                         <datalist id="pos-options">
-                            <option value="Pneu Dianteiro Esquerdo"><option value="Pneu Dianteiro Direito"><option value="Pneu Traseiro Esquerdo"><option value="Pneu Traseiro Direito"><option value="Motor - Geral"><option value="Vela de Ignição"><option value="Carburador"><option value="Coroa"><option value="Pinhão"><option value="Corrente"><option value="Eixo Traseiro"><option value="Freio - Pastilha"><option value="Freio - Disco"><option value="Barra de Direção"><option value="Volante"><option value="Banco"><option value="Parachoque Dianteiro"><option value="Parachoque Traseiro"><option value="Carenagem Lateral"><option value="Tanque de Combustível">
-                        </datalist>
+                            </datalist>
                     </div>
                     <div><label>Quantidade</label><input type="number" id="maint-qty" value="1"></div>
                 </div>
@@ -272,6 +285,46 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const ADMIN_PASS = "112512";
+
+        // SET DATA AUTOMATICA NA ENTRADA
+        document.getElementById('part-in-date').valueAsDate = new Date();
+
+        // LISTAS DE POSIÇÕES
+        const fullPosList = [
+            "Pneu Dianteiro Esquerdo", "Pneu Dianteiro Direito", "Pneu Traseiro Esquerdo", 
+            "Pneu Traseiro Direito", "Motor - Geral", "Vela de Ignição", "Carburador", 
+            "Coroa", "Pinhão", "Corrente", "Eixo Traseiro", "Freio - Pastilha", 
+            "Freio - Disco", "Barra de Direção", "Volante", "Banco", 
+            "Parachoque Dianteiro", "Parachoque Traseiro", "Carenagem Lateral", 
+            "Tanque de Combustível"
+        ];
+        
+        const sidePosList = ["Lado Esquerdo", "Lado Direito"];
+
+        // FUNÇÃO PARA ATUALIZAR AS OPÇÕES DA DATALIST (LÓGICA PNEUS/CUBOS)
+        window.updatePosOptions = () => {
+            const select = document.getElementById('maint-stock-select');
+            const dl = document.getElementById('pos-options');
+            const txt = select.options[select.selectedIndex]?.text.toLowerCase() || "";
+            
+            dl.innerHTML = '';
+            
+            if(txt.includes('pneu') || txt.includes('cubo')) {
+                sidePosList.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p;
+                    dl.appendChild(opt);
+                });
+            } else {
+                fullPosList.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p;
+                    dl.appendChild(opt);
+                });
+            }
+        };
+
+        document.getElementById('maint-stock-select').addEventListener('change', window.updatePosOptions);
 
         window.showView = (id) => {
             document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
@@ -334,6 +387,7 @@
                 if(i.qty > 0) mStock.innerHTML += `<option value="${d.id}">${i.name} (Lote: ${i.batch} | R$${(i.cost||0).toFixed(2)})</option>`;
                 tbody.innerHTML += `<tr><td>${i.name}</td><td>${i.batch}</td><td>${i.qty}</td><td>R$ ${(i.cost || 0).toFixed(2)}</td><td><button class="btn btn-edit" onclick="editStockQty('${d.id}', ${i.qty})"><i class="fas fa-pen"></i></button><button class="btn btn-danger" onclick="deleteStockItem('${d.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
             });
+            window.updatePosOptions();
         });
 
         // --- MANUTENÇÃO ---
@@ -348,7 +402,7 @@
             });
         });
 
-        // --- ANALYTICS CORRIGIDO ---
+        // --- ANALYTICS ---
         document.getElementById('btn-run-analytics').onclick = async () => {
             const startStr = document.getElementById('ana-start').value;
             const endStr = document.getElementById('ana-end').value;
@@ -378,7 +432,7 @@
             Object.values(pPos).sort((a,b) => b.c-a.c).forEach(p => { pt.innerHTML += `<tr><td>${p.n}</td><td>${p.p}</td><td>${p.q}</td><td>R$ ${p.c.toFixed(2)}</td></tr>`; });
         };
 
-        // --- NOVA LÓGICA: CONTROLE DE LOTES ---
+        // --- CONTROLE DE LOTES ---
         document.getElementById('btn-run-batch-ana').onclick = async () => {
             const partFilter = document.getElementById('batch-part-filter').value;
             const loteFilter = document.getElementById('batch-lote-filter').value.toLowerCase().trim();
@@ -428,10 +482,22 @@
         };
 
         // Funções de salvamento (Padrão)
+        document.getElementById('btn-save-kart').onclick = async () => { await addDoc(collection(db, "karts"), { num: document.getElementById('kart-num').value, chassi: document.getElementById('kart-chassi').value, motor: document.getElementById('kart-motor').value, year: document.getElementById('kart-year').value, supplier: document.getElementById('kart-supplier-select').value }); };
         document.getElementById('btn-save-sup').onclick = async () => { await addDoc(collection(db, "suppliers"), { name: document.getElementById('sup-name').value, loc: document.getElementById('sup-loc').value, tel: document.getElementById('sup-tel').value }); };
         document.getElementById('btn-save-team').onclick = async () => { await addDoc(collection(db, "team"), { name: document.getElementById('team-name').value, role: document.getElementById('team-role').value, status: document.getElementById('team-status').value }); };
         document.getElementById('btn-save-part-reg').onclick = async () => { await addDoc(collection(db, "parts_catalog"), { name: document.getElementById('part-reg-name').value, min: parseInt(document.getElementById('part-reg-min').value), cat: document.getElementById('part-reg-cat').value }); };
-        document.getElementById('btn-save-stock-in').onclick = async () => { await addDoc(collection(db, "inventory"), { name: document.getElementById('part-in-select').value, batch: document.getElementById('part-in-batch').value, qty: parseInt(document.getElementById('part-in-qty').value), supplier: document.getElementById('part-in-supplier').value, cost: parseFloat(document.getElementById('part-in-cost').value) || 0, date: new Date().toISOString() }); alert("Registrado!"); };
+        document.getElementById('btn-save-stock-in').onclick = async () => { 
+            const entryDate = document.getElementById('part-in-date').value || new Date().toISOString();
+            await addDoc(collection(db, "inventory"), { 
+                name: document.getElementById('part-in-select').value, 
+                batch: document.getElementById('part-in-batch').value, 
+                qty: parseInt(document.getElementById('part-in-qty').value), 
+                supplier: document.getElementById('part-in-supplier').value, 
+                cost: parseFloat(document.getElementById('part-in-cost').value) || 0, 
+                date: entryDate 
+            }); 
+            alert("Registrado!"); 
+        };
         document.getElementById('btn-save-maint').onclick = async () => {
             const id = document.getElementById('maint-stock-select').value;
             const q = parseInt(document.getElementById('maint-qty').value);
