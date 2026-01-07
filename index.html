@@ -16,6 +16,7 @@
             --primary-hover: #9466ff;
             --accent: #04d361;
             --danger: #e94560;
+            --warning: #ffb74d;
             --text-main: #e1e1e6;
             --text-sec: #a8a8b3;
             --border: #323238;
@@ -71,7 +72,8 @@
         
         .status-tag { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
         .tag-active { background: rgba(4, 211, 97, 0.15); color: var(--accent); }
-        .tag-inactive { background: rgba(233, 69, 96, 0.15); color: var(--danger); }
+        .tag-warning { background: rgba(255, 183, 77, 0.15); color: var(--warning); }
+        .tag-danger { background: rgba(233, 69, 96, 0.15); color: var(--danger); }
         
         .analytics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
         .kpi-value { font-size: 1.8rem; font-weight: bold; color: var(--text-main); margin-top: 5px; }
@@ -103,6 +105,7 @@
             <div class="menu-item" onclick="showView('analytics')"><i class="fas fa-chart-line"></i> Analytics</div>
             <div class="menu-item" onclick="showView('batch-control')"><i class="fas fa-history"></i> Lotes</div>
             <div class="menu-item" onclick="showView('karts')"><i class="fas fa-car"></i> Karts</div>
+            <div class="menu-item" onclick="showView('oil-change')"><i class="fas fa-oil-can"></i> Troca Óleo</div>
             <div class="menu-item" onclick="showView('suppliers')"><i class="fas fa-truck"></i> Fornec.</div>
             <div class="menu-item" onclick="showView('team')"><i class="fas fa-users"></i> Equipe</div>
             <div class="menu-item" onclick="showView('register-parts')"><i class="fas fa-plus-circle"></i> Catálogo</div>
@@ -188,6 +191,40 @@
             <div class="card">
                 <div class="table-responsive">
                     <table class="data-table"><thead><tr><th>Nº</th><th>Chassi</th><th>Motor</th><th>Fornecedor</th><th>Ações</th></tr></thead><tbody id="karts-table-body"></tbody></table>
+                </div>
+            </div>
+        </section>
+
+        <section id="oil-change" class="view-section">
+            <div class="header-section">
+                <h2>Controle de Troca de Óleo</h2>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <label style="margin:0; color: var(--text-sec); font-size: 0.9rem;">Alerta a cada (Voltas):</label>
+                    <input type="number" id="oil-threshold-input" value="300" style="width: 100px; padding: 8px;">
+                    <button class="btn btn-primary" onclick="loadOilStatus()" style="padding: 8px 15px;"><i class="fas fa-sync"></i> Atualizar</button>
+                    <button class="btn btn-success" onclick="saveOilThreshold()" style="padding: 8px 15px;">Salvar Limite</button>
+                </div>
+            </div>
+            <div class="card">
+                <p style="color: #888; margin-bottom: 20px; font-size: 0.9rem;">
+                    <i class="fas fa-info-circle"></i> O sistema calcula automaticamente as voltas dadas baseadas no histórico de corridas e compara com a última troca registrada.
+                </p>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Kart</th>
+                                <th>Total Geral (Voltas)</th>
+                                <th>Voltas no Óleo Atual</th>
+                                <th>Status</th>
+                                <th>Progresso</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="oil-table-body">
+                            <tr><td colspan="6" style="text-align: center; padding: 20px;">Carregando dados das corridas...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>
@@ -302,7 +339,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, getDoc, query, orderBy, increment, where, getDocs, Timestamp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, getDoc, query, orderBy, increment, where, getDocs, Timestamp, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
         // ============================================
         // CONFIGURAÇÃO 1: BANCO DA MANUTENÇÃO (PADRÃO)
@@ -360,7 +397,15 @@
             document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             if(event) event.currentTarget.classList.add('active');
+            
+            // Se clicar na aba de óleo, carrega os dados
+            if(id === 'oil-change') {
+                loadOilStatus();
+            }
         };
+
+        // Cache local dos karts
+        let localKarts = [];
 
         onSnapshot(collection(db, "karts"), snap => {
             const tbody = document.getElementById('karts-table-body');
@@ -368,8 +413,12 @@
             const anaKart = document.getElementById('ana-kart-filter');
             tbody.innerHTML = ''; mKart.innerHTML = ''; anaKart.innerHTML = '<option value="all">Todos Karts</option>';
             document.getElementById('dash-karts-count').innerText = snap.size;
+            
+            localKarts = []; // Limpa cache
             snap.forEach(d => {
                 const k = d.data();
+                localKarts.push({ id: d.id, ...k }); // Armazena para uso na aba de óleo
+                
                 tbody.innerHTML += `<tr><td>${k.num}</td><td>${k.chassi}</td><td>${k.motor}</td><td>${k.supplier || '-'}</td><td><button class="btn btn-danger" onclick="deleteData('karts','${d.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
                 mKart.innerHTML += `<option value="${k.num}">Kart #${k.num}</option>`;
                 anaKart.innerHTML += `<option value="${k.num}">Kart #${k.num}</option>`;
@@ -425,6 +474,154 @@
                 if(t.role === 'Mecânico') mMech.innerHTML += `<option value="${t.name}">${t.name}</option>`;
             });
         });
+
+        // ============================================
+        // LÓGICA DA ABA TROCA DE ÓLEO
+        // ============================================
+        
+        let globalOilThreshold = 300; // Valor padrão inicial
+
+        // Carrega configurações ao iniciar
+        async function initOilSettings() {
+            try {
+                const docSnap = await getDoc(doc(db, "settings", "maintenance"));
+                if(docSnap.exists()) {
+                    globalOilThreshold = docSnap.data().oilThreshold || 300;
+                    document.getElementById('oil-threshold-input').value = globalOilThreshold;
+                }
+            } catch(e) {}
+        }
+        initOilSettings();
+
+        window.saveOilThreshold = async () => {
+            const val = parseInt(document.getElementById('oil-threshold-input').value);
+            if(!val || val < 1) return alert("Valor inválido");
+            try {
+                await setDoc(doc(db, "settings", "maintenance"), { oilThreshold: val }, { merge: true });
+                globalOilThreshold = val;
+                loadOilStatus(); // Recarrega a tabela com novo limite
+                alert("Limite salvo!");
+            } catch(e) { console.error(e); alert("Erro ao salvar"); }
+        };
+
+        window.loadOilStatus = async () => {
+            const tbody = document.getElementById('oil-table-body');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> Calculando voltas no histórico...</td></tr>';
+
+            // 1. Buscar todas as corridas no banco de Cronometragem/Caixa
+            // Como as corridas ficam em 'races' no banco financeiro/cronometragem, usamos financeDb
+            const racesSnap = await getDocs(collection(financeDb, "races"));
+            
+            // 2. Agregar voltas por número de kart
+            const kartLapsAggregated = {}; // { '1': 1500, '2': 1200 }
+
+            racesSnap.forEach(docSnap => {
+                const raceData = docSnap.data();
+                if(raceData.drivers && Array.isArray(raceData.drivers)) {
+                    raceData.drivers.forEach(driver => {
+                        const num = driver.number; // Número do kart (string)
+                        if(num) {
+                            // Tenta pegar voltas manuais ajustadas, senão conta o array de tempos
+                            let lapsCount = 0;
+                            if(driver.manualLaps !== null && driver.manualLaps !== undefined) {
+                                lapsCount = driver.manualLaps;
+                            } else if(Array.isArray(driver.laps)) {
+                                lapsCount = driver.laps.length;
+                            } else {
+                                lapsCount = parseInt(driver.laps) || 0;
+                            }
+
+                            if(!kartLapsAggregated[num]) kartLapsAggregated[num] = 0;
+                            kartLapsAggregated[num] += lapsCount;
+                        }
+                    });
+                }
+            });
+
+            // 3. Renderizar Tabela cruzando com Karts cadastrados
+            tbody.innerHTML = '';
+            
+            // Ordenar karts numericamente
+            localKarts.sort((a,b) => parseInt(a.num) - parseInt(b.num));
+
+            localKarts.forEach(kart => {
+                const totalLaps = kartLapsAggregated[kart.num] || 0;
+                const lastReset = kart.lastOilResetValue || 0;
+                const currentOilLaps = totalLaps - lastReset; // Voltas dadas desde a última troca
+                
+                // Cálculo de Status
+                let statusHtml = '<span class="status-tag tag-active">OK</span>';
+                let progressColor = 'var(--accent)';
+                const percentage = Math.min((currentOilLaps / globalOilThreshold) * 100, 100);
+
+                if (currentOilLaps >= globalOilThreshold) {
+                    statusHtml = '<span class="status-tag tag-danger">TROCAR AGORA</span>';
+                    progressColor = 'var(--danger)';
+                } else if (currentOilLaps >= (globalOilThreshold * 0.8)) {
+                    statusHtml = '<span class="status-tag tag-warning">ATENÇÃO</span>';
+                    progressColor = 'var(--warning)';
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-weight:bold; font-size:1.1rem;">#${kart.num}</td>
+                        <td>${totalLaps}</td>
+                        <td style="font-weight:bold;">${currentOilLaps}</td>
+                        <td>${statusHtml}</td>
+                        <td style="vertical-align: middle;">
+                            <div style="width: 100px; height: 10px; background: #333; border-radius: 5px; overflow: hidden;">
+                                <div style="width: ${percentage}%; height: 100%; background: ${progressColor};"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <button class="btn btn-primary" style="padding: 5px 10px; font-size: 0.8rem;" onclick="registerOilChange('${kart.id}', ${totalLaps})">
+                                <i class="fas fa-check"></i> Registrar Troca
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            if(localKarts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhum kart cadastrado.</td></tr>';
+            }
+        };
+
+        window.registerOilChange = async (kartId, currentTotalLaps) => {
+            if(!confirm(`Confirma a troca de óleo deste kart? O contador será zerado.`)) return;
+            
+            try {
+                // Atualiza o kart com o valor total de voltas atual como "ponto de reset"
+                await updateDoc(doc(db, "karts", kartId), {
+                    lastOilResetValue: currentTotalLaps,
+                    lastOilChangeDate: new Date().toISOString()
+                });
+                
+                // Opcional: Registrar também na coleção 'maintenance' para histórico
+                const kartDoc = localKarts.find(k => k.id === kartId);
+                const kartNum = kartDoc ? kartDoc.num : "?";
+                await addDoc(collection(db, "maintenance"), {
+                    kart: kartNum,
+                    mechanic: "Sistema",
+                    qty: 1,
+                    date: new Date().toISOString(),
+                    partName: "Troca de Óleo (Preventiva)",
+                    partBatch: "N/A",
+                    partCost: 0,
+                    position: "Motor - Geral"
+                });
+
+                alert("Troca registrada com sucesso!");
+                loadOilStatus(); // Recarrega
+            } catch(e) {
+                console.error(e);
+                alert("Erro ao registrar troca.");
+            }
+        };
+
+        // ============================================
+        // FIM DA LÓGICA DA ABA TROCA DE ÓLEO
+        // ============================================
 
         document.getElementById('btn-run-analytics').onclick = async () => {
             const startStr = document.getElementById('ana-start').value;
